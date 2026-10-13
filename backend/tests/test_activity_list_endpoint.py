@@ -216,6 +216,12 @@ def test_activity_listing_does_not_require_authentication(
             [("builtin-filter-a1", True), ("custom-filter-a1", False)],
         ),
         ("topic", "Work", [("custom-filter-b1", False)]),
+        (
+            "type",
+            "Conversation Cards",
+            [("builtin-filter-a1", True), ("custom-filter-a1", False)],
+        ),
+        ("type", "Role-play Scenarios", [("custom-filter-b1", False)]),
         ("type", "Speaking Challenges", [("builtin-filter-a2", True)]),
     ],
 )
@@ -244,7 +250,7 @@ def test_activity_listing_combines_filters_with_and_logic(
 
     response = client.get(
         "/activities",
-        params={"level": "B1", "topic": "Work", "type": "Role-play"},
+        params={"level": "B1", "topic": "Work", "type": "Role-play Scenarios"},
     )
 
     assert response.status_code == 200
@@ -309,5 +315,21 @@ def test_activity_listing_rejects_invalid_filter_values(
     _seed_filter_activities(session_factory)
 
     response = client.get("/activities", params={filter_parameter: invalid_value})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "invalid_type",
+    ["Conversation Card", "Role-play", "Speaking Challenge"],
+)
+def test_activity_listing_rejects_internal_activity_type_values(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+    invalid_type: str,
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get("/activities", params={"type": invalid_type})
 
     assert response.status_code == 422

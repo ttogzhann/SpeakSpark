@@ -65,13 +65,11 @@ def _activity_response(
 def list_activities(
     level: ActivityLevel | None = None,
     topic: ActivityTopic | None = None,
-    activity_type: ActivityType | ActivityFilterCategory | None = Query(
-        default=None, alias="type"
-    ),
+    activity_type: ActivityFilterCategory | None = Query(default=None, alias="type"),
     db: Session = Depends(get_db),
 ) -> list[ActivityResponse]:
     normalized_type = (
-        ACTIVITY_FILTER_TYPE_ALIASES.get(activity_type, activity_type)
+        ACTIVITY_FILTER_TYPE_ALIASES[activity_type]
         if activity_type is not None
         else None
     )
