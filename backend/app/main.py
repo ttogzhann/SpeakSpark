@@ -2,6 +2,8 @@ from typing import Annotated, Literal
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,6 +16,10 @@ from app.schemas.activity import (
     ActivityType,
     CustomActivityPayload,
 )
+
+
+class FavoritePayload(BaseModel):
+    activity_id: str
 
 app = FastAPI(title="SpeakSpark API")
 
@@ -192,3 +198,35 @@ def delete_activity(
 
     db.delete(activity)
     db.commit()
+
+
+@app.post("/favorites", response_model=dict[str, str])
+def add_favorite(
+    payload: FavoritePayload,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    activity_id = payload.activity_id
+    if not db.get(BuiltInActivity, activity_id) and not db.get(CustomActivity, activity_id):
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    existing = db.get(Favorite, activity_id)
+    if existing is not None:
+        return JSONResponse(status_code=200, content={"activity_id": activity_id})
+
+    db.add(Favorite(activity_id=activity_id))
+    db.commit()
+    return JSONResponse(status_code=201, content={"activity_id": activity_id})
+
+
+@app.delete("/favorites/{activity_id}", response_model=dict[str, str])
+def remove_favorite(
+    activity_id: Annotated[str, Path(pattern=ACTIVITY_ID_PATTERN)],
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    favorite = db.get(Favorite, activity_id)
+    if favorite is None:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+
+    db.delete(favorite)
+    db.commit()
+    return {"activity_id": activity_id}
