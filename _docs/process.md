@@ -9,5 +9,5 @@
 ## Roles
 
 - PM - grooms each GitHub issue before implementation, following [_docs/team/pm.md](./team/pm.md).
-- QA - checks the result against the acceptance criteria, follows [_docs/team/qa-engineer.md](./team/qa-engineer.md).
+- QA - when asked to "Test issue #N", explicitly activates the QA Engineer role, reads [_docs/team/qa-engineer.md](./team/qa-engineer.md), verifies each acceptance criterion, and publishes the PASS/FAIL verdict directly to the GitHub issue. The task is not complete until the comment is successfully published.
 - Engineer - implements one groomed task, follows [_docs/team/software-engineer.md](./team/software-engineer.md).

@@ -31,3 +31,10 @@ Run commands from the repository root.
 - Add or update focused tests for behavior changes; report failures rather than hiding them.
 - GitHub Issues are the only active backlog. Do not recreate a local task list; use [_docs/process.md](_docs/process.md) for the work process.
 - Read [_docs/plan.md](_docs/plan.md) and [_docs/decisions.md](_docs/decisions.md) before making product or architecture changes. If they conflict, decisions.md takes precedence.
+
+## QA workflow
+
+- If the request says "Test issue #N", explicitly activate the QA Engineer role and read [_docs/team/qa-engineer.md](_docs/team/qa-engineer.md) before testing.
+- Verify each acceptance criterion against the code and the running app, then publish a GitHub comment directly to Issue #N starting with `## QA: PASS` or `## QA: FAIL`.
+- The QA task is complete only after the comment is successfully published; every acceptance criterion and exact command result must appear in the comment.
+- If GitHub write access fails, report the exact error and do not claim the QA task is complete.
