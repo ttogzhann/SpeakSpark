@@ -19,6 +19,7 @@ app = FastAPI(title="SpeakSpark API")
 
 ACTIVITY_ID_PATTERN = (
     r"^(?:builtin-[a-z0-9]+(?:-[a-z0-9]+)*|"
+    r"custom-[a-z0-9]+(?:-[a-z0-9]+)*|"
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
     r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
 )
@@ -143,3 +144,30 @@ def create_activity(
     db.commit()
     db.refresh(custom_activity)
     return _activity_response(custom_activity, is_builtin=False)
+
+
+@app.put("/activities/{activity_id}", response_model=ActivityResponse)
+def update_activity(
+    activity_id: str,
+    payload: CustomActivityPayload,
+    db: Session = Depends(get_db),
+) -> ActivityResponse:
+    activity = db.get(CustomActivity, activity_id)
+    if activity is None:
+        if db.get(BuiltInActivity, activity_id) is not None:
+            raise HTTPException(status_code=400, detail="Built-in activities are read-only")
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    activity.title = payload.title
+    activity.level = payload.level
+    activity.topic = payload.topic
+    activity.type = payload.type
+    activity.prompt = payload.prompt
+    activity.follow_up_questions = list(payload.follow_up_questions)
+    activity.useful_phrases = list(payload.useful_phrases)
+    activity.roles = [role.model_dump() for role in payload.roles]
+    activity.instructions = list(payload.instructions)
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+    return _activity_response(activity, is_builtin=False)
