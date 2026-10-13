@@ -2,10 +2,12 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import inspect
+from sqlalchemy import inspect, select
+from sqlalchemy.orm import Session
 
 from app import database, main
 from app.database_config import create_sqlite_engine
+from app.models import BuiltInActivity
 
 
 def test_health_endpoint_initializes_isolated_database(
@@ -25,6 +27,8 @@ def test_health_endpoint_initializes_isolated_database(
         assert response.json() == {"status": "ok"}
         assert database_path.is_file()
         assert set(inspect(isolated_engine).get_table_names()) == set(database.Base.metadata.tables)
+        with Session(isolated_engine) as session:
+            assert len(session.scalars(select(BuiltInActivity.id)).all()) == 36
     finally:
         isolated_engine.dispose()
 
