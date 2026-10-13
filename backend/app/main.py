@@ -200,6 +200,28 @@ def delete_activity(
     db.commit()
 
 
+@app.get("/favorites", response_model=list[ActivityResponse])
+def list_favorites(db: Session = Depends(get_db)) -> list[ActivityResponse]:
+    built_in_activities = db.scalars(
+        select(BuiltInActivity)
+        .join(Favorite, Favorite.activity_id == BuiltInActivity.id)
+        .order_by(BuiltInActivity.id)
+    ).all()
+    custom_activities = db.scalars(
+        select(CustomActivity)
+        .join(Favorite, Favorite.activity_id == CustomActivity.id)
+        .order_by(CustomActivity.id)
+    ).all()
+
+    return [
+        _activity_response(activity, is_builtin=True)
+        for activity in built_in_activities
+    ] + [
+        _activity_response(activity, is_builtin=False)
+        for activity in custom_activities
+    ]
+
+
 @app.post("/favorites", response_model=dict[str, str])
 def add_favorite(
     payload: FavoritePayload,
