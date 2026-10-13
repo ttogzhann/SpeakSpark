@@ -236,13 +236,13 @@ The MVP does not require registration or login.
 
 Tutors can use the application immediately.
 
-Custom activities and Favorites are saved in the same browser so they remain available after the browser is closed and reopened.
+The application uses a single local tutor workspace. Custom activities and Favorites are persisted in the local SQLite database through the backend API so they remain available after the browser is closed and reopened on the same device.
 
 Saved information is not automatically synchronized between different devices or browsers.
 
-Clearing browser data may remove locally saved information.
+Clearing local application data or the SQLite database may remove saved information.
 
-User accounts and cloud synchronization are planned as possible future improvements.
+User accounts, authentication, and cloud synchronization are planned as possible future improvements.
 
 ---
 
