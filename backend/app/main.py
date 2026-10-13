@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import BuiltInActivity, CustomActivity
+from app.models import BuiltInActivity, CustomActivity, Favorite
 from app.schemas.activity import (
     ActivityLevel,
     ActivityResponse,
@@ -171,3 +171,24 @@ def update_activity(
     db.commit()
     db.refresh(activity)
     return _activity_response(activity, is_builtin=False)
+
+
+@app.delete("/activities/{activity_id}", status_code=204)
+def delete_activity(
+    activity_id: Annotated[str, Path(pattern=ACTIVITY_ID_PATTERN)],
+    db: Session = Depends(get_db),
+) -> None:
+    activity = db.get(CustomActivity, activity_id)
+    if activity is None:
+        if db.get(BuiltInActivity, activity_id) is not None:
+            raise HTTPException(status_code=400, detail="Built-in activities are read-only")
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    favorite_matches = db.scalars(
+        select(Favorite).where(Favorite.activity_id == activity_id)
+    ).all()
+    for favorite in favorite_matches:
+        db.delete(favorite)
+
+    db.delete(activity)
+    db.commit()
