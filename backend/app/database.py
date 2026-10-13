@@ -11,6 +11,8 @@ class Base(DeclarativeBase):
 
 
 def init_db(bind: Engine | None = None) -> None:
+    from app import models  # noqa: F401
+
     Base.metadata.create_all(bind=bind if bind is not None else engine)
 
 
