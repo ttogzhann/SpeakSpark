@@ -13,13 +13,15 @@ SpeakSpark is an MVP web app for English tutors to browse, filter, save, create,
 
 ## Development commands
 
-The application project and its command conventions are not established yet. Do not assume or invent commands; update this section when they are defined.
+Run commands from the repository root.
 
-- Install dependencies: **pending**
-- Run backend tests (`pytest`): **pending**
-- Run frontend tests (`Vitest` + React Testing Library): **pending**
-- Run end-to-end tests (`Playwright`): **pending**
-- Run the backend and frontend: **pending**
+- Install backend dependencies: `py -m pip install -r backend/requirements-dev.txt`
+- Run backend tests: `py -m pytest -c backend/pyproject.toml backend/tests`
+- Install frontend dependencies: `npm --prefix frontend install`
+- Run frontend tests: `npm --prefix frontend test`
+- Build the frontend: `npm --prefix frontend run build`
+- Run the backend: `py -m uvicorn app.main:app --app-dir backend --reload`
+- Run the frontend: `npm --prefix frontend run dev`
 
 ## Essential rules
 
