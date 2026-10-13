@@ -1,16 +1,33 @@
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import inspect
 
-from app.database import engine
-from app.main import app
+from app import database, main
+from app.database_config import create_sqlite_engine
 
 
-def test_health_endpoint() -> None:
-    response = TestClient(app).get("/health")
+def test_health_endpoint_initializes_isolated_database(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    database_path = tmp_path / "startup" / "speakspark.db"
+    isolated_engine = create_sqlite_engine(database_path)
+    initialize_schema = database.init_db
+    monkeypatch.setattr(database, "init_db", lambda: initialize_schema(bind=isolated_engine))
 
-    assert response.status_code == 200
-    assert response.text == '{"status":"ok"}'
-    assert response.json() == {"status": "ok"}
+    try:
+        with TestClient(main.app) as client:
+            response = client.get("/health")
+
+        assert response.status_code == 200
+        assert response.text == '{"status":"ok"}'
+        assert response.json() == {"status": "ok"}
+        assert database_path.is_file()
+        assert set(inspect(isolated_engine).get_table_names()) == set(database.Base.metadata.tables)
+    finally:
+        isolated_engine.dispose()
 
 
 def test_database_uses_sqlite() -> None:
-    assert engine.dialect.name == "sqlite"
+    assert database.engine.dialect.name == "sqlite"

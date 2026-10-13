@@ -1,19 +1,17 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import DeclarativeBase, Session
 
-DATABASE_URL = "sqlite:///./speakspark.db"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+from app.database_config import DATABASE_PATH, DATABASE_URL, SessionLocal, engine
 
 
 class Base(DeclarativeBase):
     pass
+
+
+def init_db(bind: Engine | None = None) -> None:
+    Base.metadata.create_all(bind=bind if bind is not None else engine)
 
 
 def get_db() -> Generator[Session, None, None]:
