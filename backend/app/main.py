@@ -1,4 +1,5 @@
 from typing import Annotated, Literal
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from sqlalchemy import select
@@ -11,6 +12,7 @@ from app.schemas.activity import (
     ActivityResponse,
     ActivityTopic,
     ActivityType,
+    CustomActivityPayload,
 )
 
 app = FastAPI(title="SpeakSpark API")
@@ -118,3 +120,26 @@ def get_activity(
         raise HTTPException(status_code=404, detail="Activity not found")
 
     return _activity_response(activity, is_builtin)
+
+
+@app.post("/activities", response_model=ActivityResponse, status_code=201)
+def create_activity(
+    payload: CustomActivityPayload,
+    db: Session = Depends(get_db),
+) -> ActivityResponse:
+    custom_activity = CustomActivity(
+        id=str(uuid4()),
+        title=payload.title,
+        level=payload.level,
+        topic=payload.topic,
+        type=payload.type,
+        prompt=payload.prompt,
+        follow_up_questions=list(payload.follow_up_questions),
+        useful_phrases=list(payload.useful_phrases),
+        roles=[role.model_dump() for role in payload.roles],
+        instructions=list(payload.instructions),
+    )
+    db.add(custom_activity)
+    db.commit()
+    db.refresh(custom_activity)
+    return _activity_response(custom_activity, is_builtin=False)
