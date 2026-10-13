@@ -33,3 +33,8 @@ class Activity(BaseModel):
     useful_phrases: list[str] = Field(default_factory=list)
     roles: list[ParticipantObjective] = Field(default_factory=list)
     instructions: list[str] = Field(default_factory=list)
+
+
+class ActivityResponse(Activity):
+    id: str
+    is_builtin: bool
