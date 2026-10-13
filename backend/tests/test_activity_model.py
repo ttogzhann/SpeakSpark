@@ -169,15 +169,6 @@ def test_activity_declares_exact_required_and_optional_fields() -> None:
     } == required_fields
 
 
-def test_activity_enforces_title_length_boundaries(
-    required_activity_fields: dict[str, str],
-) -> None:
-    assert Activity(**{**required_activity_fields, "title": "T" * 120}).title == "T" * 120
-
-    with pytest.raises(ValidationError):
-        Activity(**{**required_activity_fields, "title": "T" * 121})
-
-
 @pytest.mark.parametrize(
     ("field", "value"),
     [

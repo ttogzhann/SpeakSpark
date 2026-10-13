@@ -3,9 +3,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-ActivityTitle = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)
-]
+ActivityTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 ActivityLevel = Literal["A1", "A2", "B1", "B2"]
 ActivityTopic = Literal[
