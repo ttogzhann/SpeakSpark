@@ -1,12 +1,17 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Path
+from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import BuiltInActivity, CustomActivity
-from app.schemas.activity import ActivityResponse
+from app.schemas.activity import (
+    ActivityLevel,
+    ActivityResponse,
+    ActivityTopic,
+    ActivityType,
+)
 
 app = FastAPI(title="SpeakSpark API")
 
@@ -15,6 +20,15 @@ ACTIVITY_ID_PATTERN = (
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
     r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
 )
+
+ActivityFilterCategory = Literal[
+    "Conversation Cards", "Role-play Scenarios", "Speaking Challenges"
+]
+ACTIVITY_FILTER_TYPE_ALIASES: dict[str, ActivityType] = {
+    "Conversation Cards": "Conversation Card",
+    "Role-play Scenarios": "Role-play",
+    "Speaking Challenges": "Speaking Challenge",
+}
 
 
 @app.on_event("startup")
@@ -48,12 +62,36 @@ def _activity_response(
 
 
 @app.get("/activities", response_model=list[ActivityResponse])
-def list_activities(db: Session = Depends(get_db)) -> list[ActivityResponse]:
+def list_activities(
+    level: ActivityLevel | None = None,
+    topic: ActivityTopic | None = None,
+    activity_type: ActivityType | ActivityFilterCategory | None = Query(
+        default=None, alias="type"
+    ),
+    db: Session = Depends(get_db),
+) -> list[ActivityResponse]:
+    normalized_type = (
+        ACTIVITY_FILTER_TYPE_ALIASES.get(activity_type, activity_type)
+        if activity_type is not None
+        else None
+    )
+    built_in_filters = []
+    custom_filters = []
+    if level is not None:
+        built_in_filters.append(BuiltInActivity.level == level)
+        custom_filters.append(CustomActivity.level == level)
+    if topic is not None:
+        built_in_filters.append(BuiltInActivity.topic == topic)
+        custom_filters.append(CustomActivity.topic == topic)
+    if normalized_type is not None:
+        built_in_filters.append(BuiltInActivity.type == normalized_type)
+        custom_filters.append(CustomActivity.type == normalized_type)
+
     built_in_activities = db.scalars(
-        select(BuiltInActivity).order_by(BuiltInActivity.id)
+        select(BuiltInActivity).where(*built_in_filters).order_by(BuiltInActivity.id)
     ).all()
     custom_activities = db.scalars(
-        select(CustomActivity).order_by(CustomActivity.id)
+        select(CustomActivity).where(*custom_filters).order_by(CustomActivity.id)
     ).all()
 
     activities = [

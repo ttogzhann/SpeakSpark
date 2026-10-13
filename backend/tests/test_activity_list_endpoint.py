@@ -11,6 +11,47 @@ from app.main import app
 from app.models import BuiltInActivity, CustomActivity
 
 
+def _seed_filter_activities(session_factory: sessionmaker[Session]) -> None:
+    with session_factory() as session:
+        session.add_all(
+            [
+                BuiltInActivity(
+                    id="builtin-filter-a1",
+                    title="A1 daily card",
+                    level="A1",
+                    topic="Daily Life",
+                    type="Conversation Card",
+                    prompt="Describe your morning.",
+                ),
+                CustomActivity(
+                    id="custom-filter-b1",
+                    title="B1 work role-play",
+                    level="B1",
+                    topic="Work",
+                    type="Role-play",
+                    prompt="Plan a project with a colleague.",
+                ),
+                BuiltInActivity(
+                    id="builtin-filter-a2",
+                    title="A2 travel challenge",
+                    level="A2",
+                    topic="Travel",
+                    type="Speaking Challenge",
+                    prompt="Describe a journey.",
+                ),
+                CustomActivity(
+                    id="custom-filter-a1",
+                    title="A1 custom discussion",
+                    level="A1",
+                    topic="Food",
+                    type="Conversation Card",
+                    prompt="What food do you enjoy?",
+                ),
+            ]
+        )
+        session.commit()
+
+
 @pytest.fixture
 def activity_client(
     tmp_path: Path,
@@ -165,3 +206,108 @@ def test_activity_listing_does_not_require_authentication(
     response = client.get("/activities")
 
     assert response.status_code == 200
+
+@pytest.mark.parametrize(
+    ("filter_parameter", "filter_value", "expected_matches"),
+    [
+        (
+            "level",
+            "A1",
+            [("builtin-filter-a1", True), ("custom-filter-a1", False)],
+        ),
+        ("topic", "Work", [("custom-filter-b1", False)]),
+        ("type", "Speaking Challenges", [("builtin-filter-a2", True)]),
+    ],
+)
+def test_activity_listing_filters_by_each_supported_dimension(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+    filter_parameter: str,
+    filter_value: str,
+    expected_matches: list[tuple[str, bool]],
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get("/activities", params={filter_parameter: filter_value})
+
+    assert response.status_code == 200
+    assert [
+        (activity["id"], activity["is_builtin"]) for activity in response.json()
+    ] == expected_matches
+
+
+def test_activity_listing_combines_filters_with_and_logic(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get(
+        "/activities",
+        params={"level": "B1", "topic": "Work", "type": "Role-play"},
+    )
+
+    assert response.status_code == 200
+    assert [activity["id"] for activity in response.json()] == ["custom-filter-b1"]
+
+    response = client.get(
+        "/activities", params={"level": "B1", "topic": "Work"}
+    )
+
+    assert response.status_code == 200
+    assert [activity["id"] for activity in response.json()] == ["custom-filter-b1"]
+
+
+def test_activity_listing_returns_matching_builtin_and_custom_activities(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get("/activities", params={"level": "A1"})
+
+    assert response.status_code == 200
+    assert [
+        (activity["id"], activity["is_builtin"]) for activity in response.json()
+    ] == [("builtin-filter-a1", True), ("custom-filter-a1", False)]
+
+
+def test_activity_listing_leaves_omitted_filters_unrestricted(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get("/activities", params={"topic": "Travel"})
+
+    assert response.status_code == 200
+    assert [activity["id"] for activity in response.json()] == ["builtin-filter-a2"]
+
+
+def test_activity_listing_returns_empty_array_when_valid_filters_do_not_match(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get("/activities", params={"level": "B2"})
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.parametrize(
+    ("filter_parameter", "invalid_value"),
+    [("level", "C1"), ("topic", "Sports"), ("type", "Unsupported Type")],
+)
+def test_activity_listing_rejects_invalid_filter_values(
+    activity_client: tuple[TestClient, sessionmaker[Session]],
+    filter_parameter: str,
+    invalid_value: str,
+) -> None:
+    client, session_factory = activity_client
+    _seed_filter_activities(session_factory)
+
+    response = client.get("/activities", params={filter_parameter: invalid_value})
+
+    assert response.status_code == 422
