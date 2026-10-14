@@ -9,16 +9,16 @@ const fieldClass = 'mt-2 block min-h-11 w-full min-w-0 rounded-lg border border-
 const buttonClass = 'min-h-11 rounded-lg border border-indigo-300 bg-white px-4 py-2 font-semibold text-indigo-800 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700'
 const lines = (value: string) => value.split('\n').map((item) => item.trim()).filter(Boolean)
 
-export default function ActivityForm({ onCreated }: { onCreated: (activity: Activity) => void }) {
-  const [title, setTitle] = useState('')
-  const [level, setLevel] = useState('')
-  const [topic, setTopic] = useState('')
-  const [type, setType] = useState('')
-  const [prompt, setPrompt] = useState('')
-  const [questions, setQuestions] = useState('')
-  const [phrases, setPhrases] = useState('')
-  const [instructions, setInstructions] = useState('')
-  const [roles, setRoles] = useState([{ participant: '', objective: '' }])
+export default function ActivityForm({ onCreated, initialActivity, onCancel, onPendingChange }: { onCreated: (activity: Activity) => void; initialActivity?: Activity; onCancel?: () => void; onPendingChange?: (pending: boolean) => void }) {
+  const [title, setTitle] = useState(initialActivity?.title ?? '')
+  const [level, setLevel] = useState(initialActivity?.level ?? '')
+  const [topic, setTopic] = useState(initialActivity?.topic ?? '')
+  const [type, setType] = useState(initialActivity?.type ?? '')
+  const [prompt, setPrompt] = useState(initialActivity?.prompt ?? '')
+  const [questions, setQuestions] = useState(initialActivity?.follow_up_questions?.join('\n') ?? '')
+  const [phrases, setPhrases] = useState(initialActivity?.useful_phrases?.join('\n') ?? '')
+  const [instructions, setInstructions] = useState(initialActivity?.instructions?.join('\n') ?? '')
+  const [roles, setRoles] = useState(initialActivity?.roles?.length ? initialActivity.roles : [{ participant: '', objective: '' }])
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [pending, setPending] = useState(false)
@@ -26,7 +26,7 @@ export default function ActivityForm({ onCreated }: { onCreated: (activity: Acti
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pendingRef.current) return
+    if (pendingRef.current || initialActivity?.is_builtin) return
     setError('')
     setSaved(false)
     if (!title.trim() || !prompt.trim() || !levels.includes(level) || !topics.includes(topic) || !types.includes(type)) {
@@ -47,27 +47,32 @@ export default function ActivityForm({ onCreated }: { onCreated: (activity: Acti
     }
     pendingRef.current = true
     setPending(true)
+    onPendingChange?.(true)
     try {
-      const response = await fetch('/api/activities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (response.status !== 201) {
+      const response = await fetch(initialActivity ? '/api/activities/' + encodeURIComponent(initialActivity.id) : '/api/activities', { method: initialActivity ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      if (response.status !== (initialActivity ? 200 : 201)) {
         setError(response.status === 422 ? 'The backend rejected these values. Check the required fields and optional role pairs, then correct and try again.' : 'The backend could not save this activity. Your entries are preserved; try again when it is available.')
         return
       }
       const activity: Activity = await response.json()
       onCreated(activity)
       setSaved(true)
+      if (initialActivity) return
       setTitle(''); setLevel(''); setTopic(''); setType(''); setPrompt(''); setQuestions(''); setPhrases(''); setInstructions(''); setRoles([{ participant: '', objective: '' }])
     } catch {
       setError('We could not confirm the save. Your entries are preserved. Refresh My Activities to check whether it was saved before trying again.')
     } finally {
       pendingRef.current = false
       setPending(false)
+      onPendingChange?.(false)
     }
   }
 
+  if (initialActivity?.is_builtin) return <p role="alert">Built-in activities are read-only.</p>
+
   return (
     <form onSubmit={submit} noValidate className="mt-8 min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
-      <h2 className="text-xl font-bold">Create an activity</h2>
+      <h2 className="text-xl font-bold">{initialActivity ? 'Edit activity' : 'Create an activity'}</h2>
       <p className="mt-2 text-sm text-slate-600">Title, level, topic, activity type, and speaking prompt are required. Optional lists use one item per line.</p>
       <fieldset disabled={pending} className="mt-6 min-w-0 space-y-4">
         <label className="block font-semibold">Title<input required value={title} onChange={(event) => setTitle(event.target.value)} className={fieldClass} /></label>
@@ -93,7 +98,8 @@ export default function ActivityForm({ onCreated }: { onCreated: (activity: Acti
           </section>
         )}
         {(type === 'Role-play' || type === 'Speaking Challenge') && <label className="block font-semibold">Instructions (optional)<textarea rows={3} value={instructions} onChange={(event) => setInstructions(event.target.value)} className={fieldClass} /></label>}
-        <button type="submit" className={buttonClass}>{pending ? 'Saving activity...' : 'Create activity'}</button>
+        <button type="submit" className={buttonClass}>{pending ? 'Saving activity...' : initialActivity ? 'Save changes' : 'Create activity'}</button>
+        {onCancel && <button type="button" onClick={onCancel} className={buttonClass}>Cancel editing</button>}
       </fieldset>
       {pending && <p role="status" className="mt-4">Saving activity...</p>}
       {error && <p role="alert" className="mt-4 text-red-800">{error}</p>}

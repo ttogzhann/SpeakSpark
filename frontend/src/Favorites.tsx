@@ -10,6 +10,7 @@ type FavoritesContextValue = {
   errors: Record<string, string>
   refresh: () => void
   toggle: (activity: Activity) => void
+  recordChanged: (id: string, activity?: Activity) => void
 }
 const FavoritesContext = createContext<FavoritesContextValue | null>(null)
 
@@ -69,7 +70,15 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <FavoritesContext.Provider value={{ activities, status, pending, errors, refresh, toggle }}>{children}</FavoritesContext.Provider>
+  function recordChanged(id: string, activity?: Activity) {
+    ++revision.current
+    setActivities((current) => activity ? current.map((item) => item.id === id ? activity : item) : current.filter((item) => item.id !== id))
+  }
+  return <FavoritesContext.Provider value={{ activities, status, pending, errors, refresh, toggle, recordChanged }}>{children}</FavoritesContext.Provider>
+}
+
+export function useFavoriteRecordChange() {
+  return useContext(FavoritesContext)?.recordChanged
 }
 
 export function FavoriteButton({ activity }: { activity: Activity }) {
