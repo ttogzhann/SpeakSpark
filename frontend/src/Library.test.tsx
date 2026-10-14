@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import Library from './Library'
@@ -73,5 +73,69 @@ describe('Library', () => {
     render(<Library activityId="missing-id" />)
     expect(await screen.findByText('This activity is no longer available.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to Library' })).toHaveAttribute('href', '#/library')
+  })
+
+  it('offers the approved options and sends complete backend queries when changing and clearing filters', async () => {
+    const fetchMock = respond()
+    render(<Library />)
+    await screen.findByRole('list', { name: 'Speaking activities' })
+    const level = screen.getByRole('combobox', { name: 'Level' })
+    const topic = screen.getByRole('combobox', { name: 'Topic' })
+    const type = screen.getByRole('combobox', { name: 'Activity type' })
+    expect(within(level).getAllByRole('option').map((option) => option.textContent)).toEqual(['All levels', 'A1', 'A2', 'B1', 'B2'])
+    expect(within(topic).getAllByRole('option').map((option) => option.textContent)).toEqual(['All topics', 'Daily Life', 'Travel', 'Food', 'Education', 'Work', 'Hobbies', 'Technology', 'Relationships'])
+    expect(within(type).getAllByRole('option').map((option) => option.textContent)).toEqual(['All types', 'Conversation Cards', 'Role-play Scenarios', 'Speaking Challenges'])
+    fireEvent.change(level, { target: { value: 'A2' } })
+    fireEvent.change(topic, { target: { value: 'Travel' } })
+    fireEvent.change(type, { target: { value: 'Role-play Scenarios' } })
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/activities?level=A2&topic=Travel&type=Role-play+Scenarios', expect.any(Object)))
+    // Render the backend response as supplied, even if a fixture does not match filters.
+    expect(await screen.findByRole('link', { name: /My discussion/ })).toBeInTheDocument()
+    fireEvent.change(topic, { target: { value: '' } })
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/activities?level=A2&type=Role-play+Scenarios', expect.any(Object)))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/activities', expect.any(Object)))
+    for (const control of [level, topic, type]) expect(control).toHaveValue('')
+  })
+
+  it('keeps controls available through filtered loading, zero matches, and failure without stale cards', async () => {
+    const fetchMock = respond()
+    render(<Library />)
+    await screen.findByRole('link', { name: /Airport plans/ })
+    let resolvePending!: (value: unknown) => void
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { resolvePending = resolve }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Level' }), { target: { value: 'B2' } })
+    expect(screen.getByRole('status')).toHaveTextContent('Loading')
+    expect(screen.queryByRole('link', { name: /Airport plans/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument()
+    await act(async () => resolvePending({ ok: true, json: async () => [] }))
+    expect(screen.getByRole('status')).toHaveTextContent('No activities match these filters')
+    fetchMock.mockRejectedValueOnce(new Error('Network unavailable'))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Topic' }), { target: { value: 'Work' } })
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Level' })).toHaveValue('B2')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(await screen.findByRole('link', { name: /Airport plans/ })).toBeInTheDocument()
+  })
+
+  it.each(['success', 'error'])('ignores an older request %s after a newer selection succeeds', async (outcome) => {
+    let resolveOld!: (value: unknown) => void
+    let rejectOld!: (reason: unknown) => void
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve, reject) => { resolveOld = resolve; rejectOld = reject }))
+      .mockResolvedValue({ ok: true, json: async () => [activities[1]] })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<Library />)
+    const oldSignal = fetchMock.mock.calls[0][1].signal as AbortSignal
+    fireEvent.change(screen.getByRole('combobox', { name: 'Level' }), { target: { value: 'B1' } })
+    expect(await screen.findByRole('link', { name: /My discussion/ })).toBeInTheDocument()
+    expect(oldSignal.aborted).toBe(true)
+    await act(async () => {
+      if (outcome === 'success') resolveOld({ ok: true, json: async () => [activities[0]] })
+      else rejectOld(new Error('Old failure'))
+    })
+    expect(screen.getByRole('link', { name: /My discussion/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Airport plans/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
