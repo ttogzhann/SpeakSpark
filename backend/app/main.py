@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import BuiltInActivity, CustomActivity, Favorite
+from app.random_selection import RandomActivityResponse, RandomActivitySelector
 from app.schemas.activity import (
     ActivityLevel,
     ActivityResponse,
@@ -22,6 +23,11 @@ class FavoritePayload(BaseModel):
     activity_id: str
 
 app = FastAPI(title="SpeakSpark API")
+app.state.random_selector = RandomActivitySelector()
+
+
+def get_random_selector() -> RandomActivitySelector:
+    return app.state.random_selector
 
 ACTIVITY_ID_PATTERN = (
     r"^(?:builtin-[a-z0-9]+(?:-[a-z0-9]+)*|"
@@ -50,6 +56,19 @@ def startup_event() -> None:
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/random-activities/next", response_model=RandomActivityResponse)
+def next_random_activity(
+    level: ActivityLevel,
+    activity_type: ActivityFilterCategory | None = Query(default=None, alias="type"),
+    db: Session = Depends(get_db),
+    selector: RandomActivitySelector = Depends(get_random_selector),
+) -> RandomActivityResponse:
+    normalized_type = (
+        ACTIVITY_FILTER_TYPE_ALIASES[activity_type] if activity_type is not None else None
+    )
+    return selector.next(db, level, normalized_type)
 
 
 def _activity_response(
