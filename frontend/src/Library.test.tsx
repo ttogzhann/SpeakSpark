@@ -12,7 +12,7 @@ beforeEach(() => window.history.replaceState(null, '', '/'))
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 function respond(data = activities) {
-  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => data })
+  const fetchMock = vi.fn().mockImplementation((url: string) => Promise.resolve({ ok: true, json: async () => url.startsWith('/api/activities/') ? data.find((item) => item.id === decodeURIComponent(url.split('/').at(-1)!)) : data }))
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -69,10 +69,23 @@ describe('Library', () => {
   })
 
   it('loads an activity destination directly and handles a missing activity', async () => {
-    respond()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
     render(<Library activityId="missing-id" />)
-    expect(await screen.findByText('This activity is no longer available.')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('This activity is no longer available.')
     expect(screen.getByRole('link', { name: 'Back to Library' })).toHaveAttribute('href', '#/library')
+  })
+
+  it('retains the selected filters when returning from endpoint-driven details', async () => {
+    const fetchMock = respond()
+    render(<App />)
+    await screen.findByRole('list', { name: 'Speaking activities' })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Topic' }), { target: { value: 'Travel' } })
+    fireEvent.click(await screen.findByRole('link', { name: /Airport plans/ }))
+    expect(await screen.findByText('Ask for a flight.')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/activities/builtin-one', expect.any(Object))
+    fireEvent.click(screen.getByRole('link', { name: 'Back to Library' }))
+    expect(await screen.findByRole('combobox', { name: 'Topic' })).toHaveValue('Travel')
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/activities?topic=Travel', expect.any(Object)))
   })
 
   it('offers the approved options and sends complete backend queries when changing and clearing filters', async () => {
