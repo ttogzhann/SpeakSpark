@@ -19,3 +19,15 @@ One cycle is shared by the local tutor workspace within a backend process. Histo
 is held in memory and resets when the backend restarts; run one backend process for
 this single-workspace MVP. The backend serializes concurrent selection transitions.
 There is no client-side history or saved speaking session.
+
+Empty requests remain `no_matches` on repetition. Each draw reads current SQLite
+activities: a newly created matching custom activity becomes selectable immediately;
+deleting the last matching custom activity produces `no_matches` on the next draw.
+An empty pool never falls back to another level or type.
+
+Moving from populated filters to empty filters and back starts fresh history.
+Validation occurs before the selector runs, so invalid requests preserve the active
+history even when they contain a different valid level plus an invalid type. These
+requests also preserve the pending exhaustion boundary. Selection and all response
+states only change in-memory selector history; activities and Favorites are read-only
+during selection. CRUD retains its existing independent persistence behavior.
