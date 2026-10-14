@@ -7,3 +7,5 @@ node_modules/
 dist/
 *.db
 *.db-journal
+frontend/test-results/
+frontend/playwright-report/
