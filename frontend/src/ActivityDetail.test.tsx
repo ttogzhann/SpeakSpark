@@ -7,7 +7,7 @@ import type { Activity } from './activity'
 const base: Activity = { id: 'custom-detail', title: 'A complete task', level: 'B1', topic: 'Work', type: 'Conversation Card', prompt: 'First line\nSecond line', is_builtin: false }
 const guidance = { follow_up_questions: ['Follow this question'], useful_phrases: ['Please help'], instructions: ['Take turns'], roles: [{ participant: 'Tutor', objective: 'Ask about the plan' }] }
 function respond(activity: Activity) {
-  const mock = vi.fn().mockResolvedValue({ ok: true, json: async () => activity })
+  const mock = vi.fn().mockImplementation((url: string) => Promise.resolve({ ok: true, json: async () => url === '/api/favorites' ? [] : activity }))
   vi.stubGlobal('fetch', mock)
   return mock
 }
@@ -20,7 +20,7 @@ describe('Activity details', () => {
     render(<App />)
     expect(await screen.findByRole('heading', { name: base.title })).toBeInTheDocument()
     expect(mock).toHaveBeenCalledWith('/api/activities/custom-detail', { signal: expect.any(AbortSignal) })
-    expect(mock).toHaveBeenCalledTimes(1)
+    expect(mock.mock.calls.filter(([url]) => url.startsWith('/api/activities'))).toHaveLength(1)
     expect(screen.getByText(/First line/).textContent).toBe(base.prompt)
     expect(screen.getByText('B1 / Work / Conversation Card')).toBeInTheDocument()
   })

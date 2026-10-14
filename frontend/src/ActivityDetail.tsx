@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import type { Activity } from './activity'
+import { FavoriteButton } from './Favorites'
 
 type DetailState =
   | { status: 'loading'; id: string }
@@ -53,6 +54,7 @@ export default function ActivityDetail({ activityId }: { activityId: string }) {
           <h2 className="text-2xl font-bold">{current.activity.title}</h2>
           <p className="mt-3 text-sm text-slate-600">{current.activity.level} / {current.activity.topic} / {current.activity.type}</p>
           <p className="mt-6 whitespace-pre-wrap text-lg">{current.activity.prompt}</p>
+          <FavoriteButton activity={current.activity} />
           {current.activity.type === 'Conversation Card' && <Guidance title="Follow-up questions" items={current.activity.follow_up_questions} />}
           {current.activity.type === 'Role-play' && (
             <>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Library from './Library'
+import Favorites, { FavoritesProvider } from './Favorites'
 
 const sections = [
   { path: '/library', title: 'Library', description: 'Find speaking activities for your next lesson.' },
@@ -28,7 +29,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <FavoritesProvider><div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
           <p className="text-2xl font-bold tracking-tight">SpeakSpark</p>
@@ -55,7 +56,8 @@ export default function App() {
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{section.title}</h1>
         <p className="mt-3 max-w-2xl text-lg text-slate-600">{section.description}</p>
         {section.path === '/library' && <Library activityId={section.activityId} />}
+        {section.path === '/favorites' && <Favorites />}
       </main>
-    </div>
+    </div></FavoritesProvider>
   )
 }
