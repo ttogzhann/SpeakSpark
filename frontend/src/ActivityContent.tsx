@@ -1,5 +1,6 @@
 ﻿import type { Activity } from './activity'
 import { FavoriteButton } from './Favorites'
+import { FocusButton } from './FocusMode'
 
 function Guidance({ title, items }: { title: string; items?: string[] }) {
   if (!items?.length) return null
@@ -13,13 +14,13 @@ function Guidance({ title, items }: { title: string; items?: string[] }) {
   )
 }
 
-export default function ActivityContent({ activity }: { activity: Activity }) {
+export default function ActivityContent({ activity, presentation = false }: { activity: Activity; presentation?: boolean }) {
   return (
 <article className="mt-6 rounded-xl border border-slate-200 bg-white p-6 [overflow-wrap:anywhere]">
-          <h2 className="text-2xl font-bold">{activity.title}</h2>
+          <h2 className={presentation ? 'text-3xl font-bold sm:text-5xl' : 'text-2xl font-bold'}>{activity.title}</h2>
           <p className="mt-3 text-sm text-slate-600">{activity.level} / {activity.topic} / {activity.type}</p>
-          <p className="mt-6 whitespace-pre-wrap text-lg">{activity.prompt}</p>
-          <FavoriteButton activity={activity} />
+          <p className={`mt-6 whitespace-pre-wrap ${presentation ? 'text-2xl leading-relaxed sm:text-3xl' : 'text-lg'}`}>{activity.prompt}</p>
+          {!presentation && <><FavoriteButton activity={activity} /><FocusButton activity={activity} /></>}
           {activity.type === 'Conversation Card' && <Guidance title="Follow-up questions" items={activity.follow_up_questions} />}
           {activity.type === 'Role-play' && (
             <>
