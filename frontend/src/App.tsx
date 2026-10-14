@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Library from './Library'
 import Favorites, { FavoritesProvider } from './Favorites'
 import MyActivities from './MyActivities'
+import SurpriseMe from './SurpriseMe'
 
 const sections = [
   { path: '/library', title: 'Library', description: 'Find speaking activities for your next lesson.' },
@@ -59,6 +60,7 @@ export default function App() {
         {section.path === '/library' && <Library activityId={section.activityId} />}
         {section.path === '/favorites' && <Favorites />}
         {section.path === '/my-activities' && <MyActivities />}
+        {section.path === '/surprise-me' && <SurpriseMe />}
       </main>
     </div></FavoritesProvider>
   )
