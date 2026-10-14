@@ -15,6 +15,7 @@ test('tutor browses, presents, saves, and creates speaking activities without an
   await page.getByRole('combobox', { name: 'Activity type', exact: true }).selectOption('Conversation Cards')
   await page.getByRole('link', { name: new RegExp(matching.title) }).click()
   await expect(page.getByRole('heading', { name: matching.title, exact: true })).toBeVisible()
+  await expect(page.getByText(`${matching.level} / ${matching.topic} / ${matching.type}`, { exact: true })).toBeVisible()
   await expect(page.getByText(matching.prompt, { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Surprise Me', exact: true }).click()
