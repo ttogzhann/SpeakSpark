@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Library from './Library'
 import Favorites, { FavoritesProvider } from './Favorites'
+import MyActivities from './MyActivities'
 
 const sections = [
   { path: '/library', title: 'Library', description: 'Find speaking activities for your next lesson.' },
@@ -57,6 +58,7 @@ export default function App() {
         <p className="mt-3 max-w-2xl text-lg text-slate-600">{section.description}</p>
         {section.path === '/library' && <Library activityId={section.activityId} />}
         {section.path === '/favorites' && <Favorites />}
+        {section.path === '/my-activities' && <MyActivities />}
       </main>
     </div></FavoritesProvider>
   )
