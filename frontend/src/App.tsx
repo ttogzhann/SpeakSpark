@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Library from './Library'
 
 const sections = [
   { path: '/library', title: 'Library', description: 'Find speaking activities for your next lesson.' },
@@ -8,7 +9,13 @@ const sections = [
 ] as const
 
 function currentSection() {
-  return sections.find((section) => section.path === window.location.hash.slice(1)) ?? sections[0]
+  const path = window.location.hash.slice(1)
+  const section = sections.find((item) => item.path === path || (item.path === '/library' && path.startsWith('/library/'))) ?? sections[0]
+  let activityId: string | undefined
+  if (path.startsWith('/library/')) {
+    try { activityId = decodeURIComponent(path.slice('/library/'.length)) } catch { activityId = path.slice('/library/'.length) }
+  }
+  return { ...section, activityId }
 }
 
 export default function App() {
@@ -47,6 +54,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-8 sm:py-14">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{section.title}</h1>
         <p className="mt-3 max-w-2xl text-lg text-slate-600">{section.description}</p>
+        {section.path === '/library' && <Library activityId={section.activityId} />}
       </main>
     </div>
   )

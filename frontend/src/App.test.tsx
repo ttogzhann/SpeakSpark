@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 const sections = [
@@ -9,8 +9,11 @@ const sections = [
   ['My Activities', '/my-activities'],
 ] as const
 
-beforeEach(() => window.history.replaceState(null, '', '/'))
-afterEach(cleanup)
+beforeEach(() => {
+  window.history.replaceState(null, '', '/')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
+})
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('App navigation', () => {
   it('opens Library at the base URL with exactly the four approved sections', () => {
